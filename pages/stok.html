@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>Manajemen Stok — Capta</title>
+<link rel="stylesheet" href="../css/app.css">
+</head>
+<body>
+<div id="overlay" class="overlay"></div>
+<div class="app">
+  <nav class="sidebar"></nav>
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+      <div><div class="topbar-title">Manajemen Stok</div></div>
+      <div class="topbar-r">
+        <button class="btn btn-outline btn-sm hide-mobile" onclick="openModal('modal-restock')">+ Restock</button>
+        <div class="chip"></div>
+      </div>
+    </header>
+    <div class="page">
+      <div class="kpi-grid kpi-3" id="stok-kpi"></div>
+
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <div class="search-wrap" style="flex:1;min-width:160px">
+          <span class="search-icon">⌕</span>
+          <input type="text" placeholder="Cari produk..." id="search" oninput="renderStok()" style="width:100%">
+        </div>
+        <select id="filter-status" onchange="renderStok()" style="padding:9px 28px 9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;color:var(--text);background:#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\") no-repeat right 10px center;appearance:none;outline:none">
+          <option value="">Semua Status</option>
+          <option value="Tersedia">Tersedia</option>
+          <option value="Menipis">Menipis</option>
+          <option value="Habis">Habis</option>
+        </select>
+        <select id="filter-kategori" onchange="renderStok()" style="padding:9px 28px 9px 11px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;color:var(--text);background:#fff url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\") no-repeat right 10px center;appearance:none;outline:none">
+          <option value="">Semua Kategori</option>
+          <option>T-Shirt</option><option>Sweater</option><option>Hoodie</option>
+          <option>Celana</option><option>Kemeja</option><option>Aksesoris</option>
+        </select>
+      </div>
+
+      <div id="stok-content"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-restock">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Restock Stok</h2>
+      <button class="modal-close" onclick="closeModal('modal-restock')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>Produk</label>
+          <select id="rs-produk" onchange="loadUkuranRestock()">
+            <option value="">— Pilih Produk —</option>
+          </select>
+        </div>
+        <div class="field"><label>Ukuran</label>
+          <select id="rs-ukuran"><option value="">— Pilih Ukuran —</option></select>
+        </div>
+        <div class="field"><label>Tambah Stok (pcs)</label>
+          <input id="rs-qty" type="number" min="1" placeholder="Jumlah pcs restock">
+        </div>
+        <div class="field"><label>Catatan</label>
+          <input id="rs-catatan" placeholder="Restock dari konveksi, dll">
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-restock')">Batal</button>
+      <button class="btn btn-primary" onclick="doRestock()">Simpan Restock</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-edit-stok">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>Edit Stok</h2>
+      <button class="modal-close" onclick="closeModal('modal-edit-stok')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="field"><label>Stok Awal (pcs)</label><input id="es-stok" type="number"></div>
+        <div class="field"><label>Batas Minimum</label><input id="es-batas" type="number"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal('modal-edit-stok')">Batal</button>
+      <button class="btn btn-primary" onclick="saveEditStok()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+let editStokId = null;
+
+function renderKPI() {
+  const stoks = DB.get('stok').map(s => ({ ...s, sisa: getStokSisa(s), status: getStatusStok(s) }));
+  const total = stoks.length;
+  const habis = stoks.filter(s => s.status === 'Habis').length;
+  const menipis = stoks.filter(s => s.status === 'Menipis').length;
+  const totalPcs = stoks.reduce((a, s) => a + s.sisa, 0);
+  document.getElementById('stok-kpi').innerHTML = `
+    <div class="kpi-card blue"><div class="kpi-lbl">Total Varian</div><div class="kpi-val">${total}</div><div class="kpi-sub">S/M/L/XL per produk</div></div>
+    <div class="kpi-card teal"><div class="kpi-lbl">Total Stok Tersedia</div><div class="kpi-val">${totalPcs} pcs</div></div>
+    <div class="kpi-card ${(habis+menipis)>0?'amber':'green'}"><div class="kpi-lbl">Perlu Restock</div><div class="kpi-val">${habis+menipis}</div><div class="kpi-sub">${habis} habis · ${menipis} menipis</div></div>
+  `;
+}
+
+function renderStok() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const filterStatus = document.getElementById('filter-status').value;
+  const filterKat = document.getElementById('filter-kategori').value;
+  const produkAll = DB.get('produk');
+  const stokAll = DB.get('stok');
+
+  let produkList = produkAll;
+  if (q) produkList = produkList.filter(p => p.nama.toLowerCase().includes(q) || p.kode.toLowerCase().includes(q));
+  if (filterKat) produkList = produkList.filter(p => p.kategori === filterKat);
+
+  const el = document.getElementById('stok-content');
+  if (!produkList.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">⬡</div><div class="empty-title">Tidak ada produk</div><div class="empty-sub">Tambah produk di menu Rilis</div></div>';
+    return;
+  }
+
+  el.innerHTML = produkList.map(p => {
+    let stokVarian = stokAll.filter(s => s.kode === p.kode).map(s => ({
+      ...s, sisa: getStokSisa(s), status: getStatusStok(s)
+    }));
+    if (filterStatus) stokVarian = stokVarian.filter(s => s.status === filterStatus);
+    if (!stokVarian.length && filterStatus) return '';
+
+    const totalSisa = stokVarian.reduce((a,s) => a+s.sisa, 0);
+    const hasAlert = stokVarian.some(s => s.status !== 'Tersedia');
+
+    return `
+    <div class="panel">
+      <div class="panel-head">
+        <div>
+          <div class="panel-title">${p.nama}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${p.kode} &middot; ${p.kategori}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${hasAlert ? '<span class="badge badge-amber">Ada peringatan</span>' : '<span class="badge badge-teal">Aman</span>'}
+          <span style="font-size:12px;font-weight:600;color:var(--text)">${totalSisa} pcs</span>
+        </div>
+      </div>
+      <div class="panel-body" style="padding:12px 16px">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px">
+          ${stokVarian.map(s => {
+            const pctFill = Math.max(0, Math.min(100, s.stok_awal > 0 ? s.sisa/s.stok_awal*100 : 0));
+            const barColor = s.status === 'Habis' ? 'var(--red)' : s.status === 'Menipis' ? 'var(--amber)' : 'var(--teal)';
+            return `
+            <div style="border:1px solid ${s.status!=='Tersedia'?'var(--amber-m)':'var(--border)'};border-radius:8px;padding:10px;background:${s.status==='Habis'?'var(--red-l)':s.status==='Menipis'?'var(--amber-l)':'var(--bg)'}">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span style="font-size:11px;font-weight:600;color:var(--text)">${s.ukuran}</span>
+                ${badgeStok(s.status)}
+              </div>
+              <div style="font-size:20px;font-weight:600;color:var(--text);margin-bottom:4px">${s.sisa}</div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:6px">dari ${s.stok_awal} · min ${s.batas_min}</div>
+              <div class="prog-bar"><div class="prog-fill" style="width:${pctFill}%;background:${barColor}"></div></div>
+              <button onclick="openEditStok('${s.id}')" style="margin-top:8px;width:100%;padding:4px;border:1px solid var(--border);border-radius:4px;background:transparent;font-size:10px;color:var(--text3);cursor:pointer">Edit</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openEditStok(id) {
+  const s = DB.get('stok').find(x => x.id === id);
+  if (!s) return;
+  editStokId = id;
+  document.getElementById('es-stok').value = s.stok_awal;
+  document.getElementById('es-batas').value = s.batas_min;
+  openModal('modal-edit-stok');
+}
+function saveEditStok() {
+  DB.update('stok', editStokId, { stok_awal: +document.getElementById('es-stok').value, batas_min: +document.getElementById('es-batas').value });
+  toast('Stok diperbarui');
+  closeModal('modal-edit-stok');
+  renderKPI(); renderStok();
+}
+
+function loadUkuranRestock() {
+  const kode = document.getElementById('rs-produk').value;
+  const stoks = DB.get('stok').filter(s => s.kode === kode);
+  const sel = document.getElementById('rs-ukuran');
+  sel.innerHTML = '<option value="">— Pilih Ukuran —</option>' + stoks.map(s => `<option value="${s.id}">${s.ukuran} (sisa: ${getStokSisa(s)} pcs)</option>`).join('');
+}
+
+function doRestock() {
+  const stokId = document.getElementById('rs-ukuran').value;
+  const qty = +document.getElementById('rs-qty').value;
+  if (!stokId || !qty) { toast('Pilih ukuran dan isi qty', 'error'); return; }
+  const s = DB.get('stok').find(x => x.id === stokId);
+  if (!s) return;
+  DB.update('stok', stokId, { stok_awal: (s.stok_awal || 0) + qty });
+  toast(`Restock ${qty} pcs berhasil`);
+  closeModal('modal-restock');
+  renderKPI(); renderStok();
+}
+
+function buildRestockProdukSel() {
+  const produk = DB.get('produk');
+  document.getElementById('rs-produk').innerHTML = '<option value="">— Pilih Produk —</option>' +
+    produk.map(p => `<option value="${p.kode}">${p.kode} — ${p.nama}</option>`).join('');
+}
+
+if (initPage('stok', 'Manajemen Stok', 'Stok per varian ukuran')) {
+  renderKPI(); renderStok(); buildRestockProdukSel();
+}
+</script>
+</body>
+</html>

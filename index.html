@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>Capta — Login</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#2563eb;--blue-l:#eff6ff;--blue-m:#bfdbfe;--blue-t:#1e40af;--border:#e2e8f0;--text:#0f172a;--text2:#475569;--text3:#94a3b8;--red:#dc2626;--red-l:#fef2f2}
+html,body{height:100%;font-family:'Inter',system-ui,sans-serif;background:#f8fafc;color:var(--text);-webkit-font-smoothing:antialiased}
+.wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px}
+.card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:380px}
+.brand{text-align:center;margin-bottom:28px}
+.brand-name{font-size:28px;font-weight:600;color:var(--text);letter-spacing:-.02em}
+.brand-sub{font-size:12px;color:var(--text3);margin-top:4px}
+.brand-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--blue);margin:0 2px;vertical-align:middle}
+.divider{width:40px;height:2px;background:var(--blue-m);border-radius:1px;margin:0 auto 28px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:6px}
+.field input{width:100%;padding:10px 13px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);outline:none;transition:border-color .15s,box-shadow .15s;background:#fff}
+.field input:focus{border-color:var(--blue);box-shadow:0 0 0 3px #2563eb18}
+.field input::placeholder{color:var(--text3)}
+.btn-login{width:100%;padding:11px;background:var(--blue);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:500;font-family:inherit;cursor:pointer;transition:background .15s;margin-top:4px;letter-spacing:.01em}
+.btn-login:hover{background:#1d4ed8}
+.btn-login:active{background:#1e40af}
+.error{font-size:12px;color:var(--red);background:var(--red-l);border:1px solid #fecaca;border-radius:6px;padding:8px 12px;margin-top:12px;display:none;text-align:center}
+.error.show{display:block}
+.footer{margin-top:20px;text-align:center;font-size:11px;color:var(--text3)}
+@media(max-width:400px){.card{padding:28px 20px;border-radius:12px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="brand">
+      <div class="brand-name">Capta <span class="brand-dot"></span></div>
+      <div class="brand-sub">Brand Management System</div>
+    </div>
+    <div class="divider"></div>
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="username" placeholder="masukkan username" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="btn-login" onclick="doLogin()">Masuk</button>
+    <div class="error" id="err">Username atau password salah.</div>
+    <div class="footer">Capta &copy; 2026 &nbsp;&middot;&nbsp; Akses Internal</div>
+  </div>
+</div>
+<script>
+const USERS={'admin':{pass:'capta2026',role:'admin',name:'Admin',initial:'AD'},'owner':{pass:'capta.boss',role:'owner',name:'Owner',initial:'OW'},'manajer':{pass:'mgmt2026',role:'manajer',name:'Manajer',initial:'MG'},'desainer':{pass:'dsn2026',role:'viewer',name:'Desainer',initial:'DS'},'gudang':{pass:'stok2026',role:'staff',name:'Tim Gudang',initial:'GD'}};
+document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin()});
+function doLogin(){
+  const u=document.getElementById('username').value.trim().toLowerCase();
+  const p=document.getElementById('password').value;
+  const err=document.getElementById('err');
+  const user=USERS[u];
+  if(user&&user.pass===p){
+    sessionStorage.setItem('capta_user',JSON.stringify({username:u,...user}));
+    window.location.href='pages/dashboard.html';
+  } else {
+    err.classList.add('show');
+    document.getElementById('password').value='';
+    setTimeout(()=>err.classList.remove('show'),3000);
+  }
+}
+if(sessionStorage.getItem('capta_user'))window.location.href='pages/dashboard.html';
+</script>
+</body>
+</html>
