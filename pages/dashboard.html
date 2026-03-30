@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>Dashboard — Capta</title>
+<link rel="stylesheet" href="../css/app.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+<div id="overlay" class="overlay"></div>
+<div class="app">
+  <nav class="sidebar"></nav>
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger" aria-label="Menu">
+        <span></span><span></span><span></span>
+      </button>
+      <div>
+        <div class="topbar-title">Dashboard</div>
+      </div>
+      <div class="topbar-r">
+        <div class="chip" id="date-chip"></div>
+      </div>
+    </header>
+    <div class="page" id="content">
+      <div class="sec-title" id="greeting"></div>
+      <div class="kpi-grid kpi-4" id="kpi-row"></div>
+      <div class="two-col">
+        <div>
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Order Terbaru</span>
+              <a href="order.html" class="panel-link">Lihat semua</a>
+            </div>
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>Produk</th><th>Ukuran</th><th>Channel</th><th>Status</th></tr></thead>
+                <tbody id="tbl-order"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Penjualan per Channel</span>
+            </div>
+            <div style="padding:16px;position:relative;height:200px">
+              <canvas id="chart-channel"></canvas>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="panel">
+            <div class="panel-head">
+              <span class="panel-title">Stok Menipis / Habis</span>
+              <a href="stok.html" class="panel-link">Kelola</a>
+            </div>
+            <div class="panel-body" id="stok-alert"></div>
+          </div>
+          <div class="panel" id="panel-rilis">
+            <div class="panel-head">
+              <span class="panel-title">Status Produksi</span>
+              <a href="rilis.html" class="panel-link">Detail</a>
+            </div>
+            <div class="panel-body" id="produksi-info"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="../js/app.js"></script>
+<script>
+let chartChannel = null;
+
+function renderKPI() {
+  const orders = DB.get('order');
+  const today = new Date().toISOString().slice(0,7);
+  const thisMonth = orders.filter(o => o.tanggal?.startsWith(today));
+  const totalRev = thisMonth.reduce((a,o) => a + (o.qty * o.harga), 0);
+  const biayaAdmin = thisMonth.reduce((a,o) => a + Math.round(o.qty * o.harga * (o.biaya_admin_pct||0)), 0);
+  const bersih = totalRev - biayaAdmin;
+
+  const stoks = DB.get('stok');
+  const menipis = stoks.filter(s => getStatusStok(s) !== 'Tersedia').length;
+
+  const keu = DB.get('keuangan').filter(k => k.tanggal?.startsWith(today));
+  const keluar = keu.filter(k => k.jenis === 'keluar').reduce((a,k) => a + (+k.nominal||0), 0);
+  const laba = bersih - keluar;
+
+  document.getElementById('kpi-row').innerHTML = `
+    <div class="kpi-card blue">
+      <div class="kpi-lbl">Order Bulan Ini</div>
+      <div class="kpi-val">${thisMonth.length}</div>
+      <div class="kpi-sub">dari ${orders.length} total</div>
+    </div>
+    <div class="kpi-card teal">
+      <div class="kpi-lbl">Pendapatan Bersih</div>
+      <div class="kpi-val" style="font-size:18px">${rp(bersih)}</div>
+      <div class="kpi-sub">setelah biaya platform</div>
+    </div>
+    <div class="kpi-card ${laba>=0?'green':'red'}">
+      <div class="kpi-lbl">Laba Bersih</div>
+      <div class="kpi-val" style="font-size:18px">${rp(laba)}</div>
+      <div class="kpi-sub">${bersih>0?((laba/bersih*100).toFixed(1)+'% margin'):'—'}</div>
+    </div>
+    <div class="kpi-card ${menipis>0?'amber':'teal'}">
+      <div class="kpi-lbl">Stok Bermasalah</div>
+      <div class="kpi-val">${menipis}</div>
+      <div class="kpi-sub">varian perlu restock</div>
+    </div>
+  `;
+}
+
+function renderOrderTable() {
+  const orders = DB.get('order').slice(0,6);
+  document.getElementById('tbl-order').innerHTML = orders.map(o => `
+    <tr>
+      <td>
+        <div style="font-size:12px;font-weight:500">${getNama(o.kode).split('—')[0].trim()}</div>
+        <div class="td-muted" style="font-size:10px">${o.kode}</div>
+      </td>
+      <td class="td-muted">${o.ukuran}</td>
+      <td class="td-muted" style="font-size:11px">${o.platform}</td>
+      <td>${badgeOrder(o.status)}</td>
+    </tr>
+  `).join('') || '<tr><td colspan="4" class="empty">Belum ada order</td></tr>';
+}
+
+function renderChannelChart() {
+  const orders = DB.get('order');
+  const byChannel = {};
+  orders.forEach(o => { byChannel[o.platform] = (byChannel[o.platform]||0) + o.qty*o.harga; });
+  const labels = Object.keys(byChannel);
+  const vals = labels.map(l => byChannel[l]);
+  const colors = ['#2563eb','#0d9488','#16a34a','#d97706','#7c3aed'];
+  if (chartChannel) chartChannel.destroy();
+  const ctx = document.getElementById('chart-channel').getContext('2d');
+  chartChannel = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: vals, backgroundColor: colors, borderWidth: 0, hoverOffset: 3 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position:'right', labels:{ font:{ family:'Inter', size:11 }, color:'#475569', boxWidth:10, padding:10 } },
+        tooltip: { callbacks:{ label: ctx => ' ' + rp(ctx.parsed) } }
+      },
+      cutout: '60%'
+    }
+  });
+}
+
+function renderStokAlert() {
+  const stoks = DB.get('stok').map(s => ({ ...s, sisa: getStokSisa(s), status: getStatusStok(s) }))
+    .filter(s => s.status !== 'Tersedia').sort((a,b) => a.sisa - b.sisa);
+  const el = document.getElementById('stok-alert');
+  if (!stoks.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon" style="font-size:20px">✓</div><div class="empty-title">Semua stok aman</div></div>';
+    return;
+  }
+  el.innerHTML = stoks.slice(0,6).map(s => {
+    const pct = Math.max(0, Math.min(100, s.sisa / (s.stok_awal||1) * 100));
+    const col = s.status === 'Habis' ? 'var(--red)' : 'var(--amber)';
+    return `<div class="alert-item">
+      <div class="alert-dot" style="background:${col}"></div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${getNama(s.kode).split('—')[0].trim()} — ${s.ukuran}</div>
+        <div class="prog-bar" style="margin-top:4px"><div class="prog-fill" style="width:${pct}%;background:${col}"></div></div>
+      </div>
+      <div style="text-align:right;flex-shrink:0;margin-left:8px">
+        <div style="font-size:13px;font-weight:600;color:${col}">${s.sisa}</div>
+        <div style="font-size:10px;color:var(--text3)">pcs</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderProduksi() {
+  const rilis = DB.get('rilis').find(r => r.status === 'produksi');
+  const el = document.getElementById('produksi-info');
+  if (!rilis) { el.innerHTML = '<div class="empty" style="padding:20px"><div class="empty-sub">Tidak ada produksi berjalan</div></div>'; return; }
+  const sisa = rilis.estimasi_selesai ? Math.max(0, Math.round((new Date(rilis.estimasi_selesai) - new Date()) / 86400000)) : '?';
+  el.innerHTML = `
+    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:12px">${rilis.nama}</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="background:var(--blue-l);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:18px;font-weight:600;color:var(--blue-t)">${sisa}</div>
+        <div style="font-size:10px;color:var(--blue-t)">Hari tersisa</div>
+      </div>
+      <div style="background:var(--surface);border-radius:8px;padding:10px;text-align:center">
+        <div style="font-size:18px;font-weight:600;color:var(--text)">${rp(rilis.biaya_konveksi)}</div>
+        <div style="font-size:10px;color:var(--text3)">Biaya konveksi</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;font-size:11px;color:var(--text3)">Konveksi: ${rilis.konveksi || '—'} &middot; Est. selesai: ${fmtDate(rilis.estimasi_selesai)}</div>
+  `;
+}
+
+function renderGreeting() {
+  const hour = new Date().getHours();
+  const greet = hour < 12 ? 'Selamat pagi' : hour < 15 ? 'Selamat siang' : hour < 18 ? 'Selamat sore' : 'Selamat malam';
+  const user = getUser();
+  document.getElementById('greeting').textContent = `${greet}, ${user?.name || 'Tim Capta'} — ini ringkasan hari ini`;
+}
+
+function render() {
+  renderGreeting();
+  renderKPI();
+  renderOrderTable();
+  renderChannelChart();
+  renderStokAlert();
+  renderProduksi();
+}
+
+(async()=>{ if(await initPage('dashboard','Dashboard','')) {
+  render();
+  // Show demo notice on first visit
+  if (!localStorage.getItem('capta_welcomed')) {
+    localStorage.setItem('capta_welcomed', '1');
+    setTimeout(() => toast('Data demo dimuat. Mulai input data nyata Capta!', 'info'), 800);
+  }
+} })()
+</script>
+</body>
+</html>

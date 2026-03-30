@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>Kalkulator HPP — Capta</title>
+<link rel="stylesheet" href="../css/app.css">
+<style>
+.result-box{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.result-main{text-align:center;padding:16px 0;border-bottom:1px solid var(--border);margin-bottom:14px}
+.result-lbl{font-size:11px;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em}
+.result-val{font-size:32px;font-weight:700;color:var(--blue-t)}
+.result-sub{font-size:11px;color:var(--text3);margin-top:4px}
+.result-row{display:flex;justify-content:space-between;font-size:13px;padding:6px 0;border-bottom:1px solid var(--border)}
+.result-row:last-child{border-bottom:none}
+.sim-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:12px}
+.sim-row:last-child{border-bottom:none}
+.sim-input{padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:12px;text-align:right;width:100%;color:var(--blue-t);font-weight:500;outline:none}
+.sim-input:focus{border-color:var(--blue)}
+.step-num{display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--blue);color:#fff;font-size:10px;font-weight:600;align-items:center;justify-content:center;flex-shrink:0}
+@media(max-width:768px){
+  .hpp-layout{display:block}
+  .hpp-right{margin-top:16px}
+}
+@media(min-width:769px){
+  .hpp-layout{display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start}
+  .hpp-right{position:sticky;top:76px}
+}
+</style>
+</head>
+<body>
+<div id="overlay" class="overlay"></div>
+<div class="app">
+  <nav class="sidebar"></nav>
+  <div class="main">
+    <header class="topbar">
+      <button class="hamburger" id="hamburger"><span></span><span></span><span></span></button>
+      <div><div class="topbar-title">Kalkulator HPP</div></div>
+      <div class="topbar-r"><div class="chip"></div></div>
+    </header>
+    <div class="page">
+      <div class="hpp-layout">
+        <div>
+          <!-- Step 1 -->
+          <div class="panel">
+            <div class="panel-head"><div style="display:flex;align-items:center;gap:8px"><span class="step-num">1</span><span class="panel-title">Info Produk & Batch</span></div></div>
+            <div class="panel-body">
+              <div class="form-grid form-2">
+                <div class="field form-span2"><label>Nama Produk</label><input id="h-nama" placeholder="Oversize Tee — Cotton Washed" oninput="calc()"></div>
+                <div class="field"><label>Jumlah Produksi (pcs)</label><input id="h-qty" type="number" value="100" min="1" oninput="calc()"></div>
+                <div class="field"><label>Target Margin (%)</label><input id="h-margin" type="number" value="40" step="1" min="0" max="100" oninput="calc()"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="panel">
+            <div class="panel-head"><div style="display:flex;align-items:center;gap:8px"><span class="step-num">2</span><span class="panel-title">Biaya Bahan Baku <span style="font-size:11px;color:var(--text3);font-weight:400">(per pcs)</span></span></div></div>
+            <div class="panel-body">
+              <div class="form-grid form-2">
+                <div class="field"><label>Kain / Material Utama</label><input id="bb1" type="number" value="45000" oninput="calc()"></div>
+                <div class="field"><label>Aksesoris (kancing, label)</label><input id="bb2" type="number" value="3000" oninput="calc()"></div>
+                <div class="field"><label>Hang Tag & Packaging</label><input id="bb3" type="number" value="2500" oninput="calc()"></div>
+                <div class="field"><label>Bahan baku lainnya</label><input id="bb4" type="number" value="0" oninput="calc()"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;background:var(--blue-l);padding:10px 12px;border-radius:6px;margin-top:12px;font-size:13px">
+                <span style="color:var(--blue-t)">Subtotal Bahan Baku / pcs</span>
+                <strong style="color:var(--blue-t)" id="sub-bb">—</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="panel">
+            <div class="panel-head"><div style="display:flex;align-items:center;gap:8px"><span class="step-num">3</span><span class="panel-title">Biaya Tenaga Kerja <span style="font-size:11px;color:var(--text3);font-weight:400">(per pcs)</span></span></div></div>
+            <div class="panel-body">
+              <div class="form-grid form-2">
+                <div class="field"><label>Makloon / Ongkos Jahit</label><input id="tk1" type="number" value="15000" oninput="calc()"></div>
+                <div class="field"><label>Cutting & Finishing</label><input id="tk2" type="number" value="3000" oninput="calc()"></div>
+                <div class="field"><label>Laundry / Dyeing (jika ada)</label><input id="tk3" type="number" value="0" oninput="calc()"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;background:var(--teal-l);padding:10px 12px;border-radius:6px;margin-top:12px;font-size:13px">
+                <span style="color:var(--teal-t)">Subtotal Tenaga Kerja / pcs</span>
+                <strong style="color:var(--teal-t)" id="sub-tk">—</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="panel">
+            <div class="panel-head"><div style="display:flex;align-items:center;gap:8px"><span class="step-num">4</span><span class="panel-title">Overhead <span style="font-size:11px;color:var(--text3);font-weight:400">(total batch — dibagi otomatis)</span></span></div></div>
+            <div class="panel-body">
+              <div style="background:var(--amber-l);border-radius:6px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:var(--amber-t)">
+                Isi biaya total untuk seluruh batch. Sistem akan bagi per pcs sesuai jumlah produksi di Langkah 1.
+              </div>
+              <div class="form-grid form-2">
+                <div class="field"><label>Biaya Desain / Sampel</label><input id="oh1" type="number" value="200000" oninput="calc()"></div>
+                <div class="field"><label>Marketing & Promosi</label><input id="oh2" type="number" value="500000" oninput="calc()"></div>
+                <div class="field"><label>Ongkir ke Gudang</label><input id="oh3" type="number" value="100000" oninput="calc()"></div>
+                <div class="field"><label>Operasional Lainnya</label><input id="oh4" type="number" value="100000" oninput="calc()"></div>
+              </div>
+              <div style="display:flex;justify-content:space-between;background:var(--amber-l);padding:10px 12px;border-radius:6px;margin-top:12px;font-size:13px">
+                <span style="color:var(--amber-t)">Subtotal Overhead / pcs</span>
+                <strong style="color:var(--amber-t)" id="sub-oh">—</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sim table -->
+          <div class="panel">
+            <div class="panel-head"><span class="panel-title">Simulasi Harga Jual</span><span style="font-size:11px;color:var(--text3)">Edit harga di kolom pertama</span></div>
+            <div class="panel-body" style="padding:8px 16px">
+              <div class="sim-row" style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em">
+                <span>Harga Jual</span><span>Untung/pcs</span><span>Margin</span><span>Penilaian</span>
+              </div>
+              <div id="sim-body"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: Result -->
+        <div class="hpp-right">
+          <div class="result-box">
+            <div class="result-main">
+              <div class="result-lbl">HPP per pcs</div>
+              <div class="result-val" id="hpp-val">—</div>
+              <div class="result-sub" id="hpp-nama">—</div>
+            </div>
+            <div class="result-row"><span style="color:var(--text3)">HPP Total Batch</span><strong id="hpp-total">—</strong></div>
+            <div class="result-row"><span style="color:var(--text3)">Harga Jual Minimum</span><strong style="color:var(--green-t)" id="harga-min">—</strong></div>
+            <div class="result-row"><span style="color:var(--text3)">Target Margin</span><strong style="color:var(--blue-t)" id="margin-val">—</strong></div>
+            <div class="result-row">
+              <span style="color:var(--text3)">Harga di Shopee</span>
+              <div style="text-align:right">
+                <div style="font-weight:600;color:var(--text)" id="harga-shopee">—</div>
+                <div style="font-size:10px;color:var(--text3)">setelah 2.5% admin</div>
+              </div>
+            </div>
+            <div class="result-row">
+              <span style="color:var(--text3)">Harga di Tokopedia</span>
+              <div style="text-align:right">
+                <div style="font-weight:600;color:var(--text)" id="harga-tokopedia">—</div>
+                <div style="font-size:10px;color:var(--text3)">setelah 2.0% admin</div>
+              </div>
+            </div>
+            <div class="result-row" style="border-bottom:none">
+              <span style="color:var(--text3)">Harga di TikTok</span>
+              <div style="text-align:right">
+                <div style="font-weight:600;color:var(--text)" id="harga-tiktok">—</div>
+                <div style="font-size:10px;color:var(--text3)">setelah 3.0% admin</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="../js/app.js"></script>
+<script>
+const SIM_PRICES = [80000,100000,120000,150000,175000,200000];
+
+function n(id) { return +document.getElementById(id)?.value || 0; }
+
+function buildSim() {
+  document.getElementById('sim-body').innerHTML = SIM_PRICES.map((p,i) => `
+    <div class="sim-row">
+      <input class="sim-input" type="number" value="${p}" oninput="updateSimRow(this,${i})" id="sim-p-${i}">
+      <span id="sim-untung-${i}" style="font-weight:500;color:var(--text)">—</span>
+      <span id="sim-margin-${i}" style="font-weight:600">—</span>
+      <span id="sim-rating-${i}" style="font-size:11px">—</span>
+    </div>
+  `).join('');
+}
+
+function updateSimRow(input, i) {
+  const hpp = getCurrentHPP();
+  const price = +input.value || 0;
+  const untung = price - hpp;
+  const m = price > 0 ? untung/price : 0;
+  const mPct = (m*100).toFixed(1) + '%';
+  const rating = m >= 0.4 ? '✓ Bagus' : m >= 0.3 ? 'Cukup' : m >= 0.1 ? 'Tipis' : m > 0 ? 'Kecil' : 'Rugi';
+  const col = m >= 0.3 ? 'var(--green-t)' : m >= 0.1 ? 'var(--amber-t)' : 'var(--red-t)';
+  document.getElementById('sim-untung-'+i).textContent = rpFull(untung);
+  document.getElementById('sim-untung-'+i).style.color = col;
+  document.getElementById('sim-margin-'+i).textContent = mPct;
+  document.getElementById('sim-margin-'+i).style.color = col;
+  document.getElementById('sim-rating-'+i).textContent = rating;
+  document.getElementById('sim-rating-'+i).style.color = col;
+}
+
+function getCurrentHPP() {
+  const qty = Math.max(1, n('h-qty'));
+  return n('bb1')+n('bb2')+n('bb3')+n('bb4') + n('tk1')+n('tk2')+n('tk3') + (n('oh1')+n('oh2')+n('oh3')+n('oh4'))/qty;
+}
+
+function calc() {
+  const qty = Math.max(1, n('h-qty'));
+  const margin = n('h-margin')/100;
+  const nama = document.getElementById('h-nama').value || '—';
+  const subBB = n('bb1')+n('bb2')+n('bb3')+n('bb4');
+  const subTK = n('tk1')+n('tk2')+n('tk3');
+  const subOH = (n('oh1')+n('oh2')+n('oh3')+n('oh4'))/qty;
+  const hpp = subBB + subTK + subOH;
+  const harMin = margin < 1 ? Math.ceil(hpp/(1-margin)/100)*100 : 0;
+
+  document.getElementById('sub-bb').textContent = rpFull(subBB);
+  document.getElementById('sub-tk').textContent = rpFull(subTK);
+  document.getElementById('sub-oh').textContent = rpFull(Math.round(subOH));
+  document.getElementById('hpp-val').textContent = rpFull(Math.round(hpp));
+  document.getElementById('hpp-nama').textContent = nama + ' · ' + qty + ' pcs';
+  document.getElementById('hpp-total').textContent = rpFull(Math.round(hpp*qty));
+  document.getElementById('harga-min').textContent = rpFull(harMin);
+  document.getElementById('margin-val').textContent = (margin*100).toFixed(0)+'%';
+
+  const adjShopee = Math.ceil(harMin/(1-0.025)/100)*100;
+  const adjTkp    = Math.ceil(harMin/(1-0.020)/100)*100;
+  const adjTtk    = Math.ceil(harMin/(1-0.030)/100)*100;
+  document.getElementById('harga-shopee').textContent = rpFull(adjShopee);
+  document.getElementById('harga-tokopedia').textContent = rpFull(adjTkp);
+  document.getElementById('harga-tiktok').textContent = rpFull(adjTtk);
+
+  SIM_PRICES.forEach((_,i) => {
+    const input = document.getElementById('sim-p-'+i);
+    if (input) updateSimRow(input, i);
+  });
+}
+
+(async()=>{ if(await initPage('hpp','Kalkulator HPP','Hitung harga pokok produksi')) { buildSim(); calc(); } })()
+</script>
+</body>
+</html>
